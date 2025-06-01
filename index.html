@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>騎士巡迴 - 手動走訪</title>
     <style>
         body {
@@ -11,8 +11,10 @@
             flex-direction: column;
             align-items: center;
             background: #18191a;
-            margin: 20px;
+            margin: 0;
             color: #f5f6fa;
+            min-height: 100vh;
+            padding-bottom: env(safe-area-inset-bottom);
         }
         #controls {
             margin-bottom: 20px;
@@ -23,6 +25,16 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            flex-wrap: wrap;
+            max-width: 100vw;
+        }
+        #board-wrapper {
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 4vw 0 4vw 0;
+            box-sizing: border-box;
         }
         #board {
             display: grid;
@@ -31,10 +43,15 @@
             border-radius: 16px;
             padding: 16px;
             box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+            width: 100%;
+            max-width: 96vw;
+            box-sizing: border-box;
+            justify-content: center;
+            margin: 0 auto;
         }
         .cell {
-            width: 48px;
-            height: 48px;
+            width: var(--cell-size, 48px);
+            height: var(--cell-size, 48px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -46,6 +63,7 @@
             cursor: pointer;
             transition: background 0.2s, color 0.2s, box-shadow 0.2s;
             user-select: none;
+            touch-action: manipulation;
         }
         .cell:active {
             background: #44464a;
@@ -57,18 +75,19 @@
             box-shadow: 0 0 0 2px #ffd60055;
         }
         input, button {
-            padding: 7px 14px;
+            padding: 12px 18px;
             margin: 0 4px;
             border-radius: 8px;
             border: none;
             outline: none;
-            font-size: 16px;
+            font-size: 18px;
+            box-sizing: border-box;
         }
         input[type="number"] {
             background: #232326;
             color: #f5f6fa;
             border: 1.5px solid #35363a;
-            width: 60px;
+            width: 70px;
             text-align: center;
         }
         button {
@@ -79,7 +98,7 @@
             cursor: pointer;
             transition: background 0.2s, box-shadow 0.2s;
         }
-        button:hover {
+        button:hover, button:active {
             background: linear-gradient(90deg, #1e6fff 0%, #4f8cff 100%);
             box-shadow: 0 2px 8px rgba(30,111,255,0.16);
         }
@@ -89,6 +108,39 @@
             color: #ffd600;
             min-height: 24px;
         }
+        #hint {
+            margin-top: 18px;
+            background: #22242a;
+            color: #f5f6fa;
+            border-radius: 12px;
+            padding: 18px 20px;
+            max-width: 600px;
+            font-size: 17px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+            line-height: 1.7;
+            word-break: break-word;
+        }
+        @media (max-width: 600px) {
+            #board-wrapper {
+                padding: 6vw 0 6vw 0;
+            }
+            #controls {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 12px 4vw;
+            }
+            #board {
+                padding: 4vw;
+                max-width: 92vw;
+            }
+            .cell {
+                font-size: 4vw;
+            }
+            input, button {
+                font-size: 4vw;
+                padding: 10px 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -97,9 +149,11 @@
         <input type="number" id="boardSize" value="8" min="3" max="10">
         <button onclick="startTour()">開始</button>
         <button onclick="resetBoard()">重新開始</button>
+        <button onclick="showHint()">提示</button>
     </div>
-    <div id="board"></div>
+    <div id="board-wrapper"><div id="board"></div></div>
     <div id="message"></div>
+    <div id="hint" style="display:none;"></div>
 
     <script>
         const boardDiv = document.getElementById('board');
@@ -121,7 +175,12 @@
             currentStep = 0;
             currentPos = null;
             boardDiv.innerHTML = '';
-            boardDiv.style.gridTemplateColumns = `repeat(${n}, 48px)`;
+            // 計算每格大小，讓棋盤寬度不超過螢幕
+            let vw = Math.min(window.innerWidth, window.innerHeight) * 0.96;
+            let cellSize = Math.floor(vw / n);
+            if (cellSize > 60) cellSize = 60;
+            document.documentElement.style.setProperty('--cell-size', cellSize + 'px');
+            boardDiv.style.gridTemplateColumns = `repeat(${n}, var(--cell-size, 48px))`;
             messageDiv.textContent = '';
             for (let i = 0; i < n; i++) {
                 for (let j = 0; j < n; j++) {
@@ -248,9 +307,34 @@
             updateCellClickable();
         }
 
+        /**
+         * 顯示提示區塊，根據 n 給出策略與數學術語說明
+         */
+        function showHint() {
+            const hintDiv = document.getElementById('hint');
+            let hint = '';
+            if (n < 5) {
+                hint = `\uD83D\uDE41 棋盤太小，無法完成完整的騎士巡迴。<br><br><b>說明：</b><br>3x3、4x4 棋盤因為格子太少，騎士怎麼走都會有格子沒辦法踩到，就像在小房間裡繞圈圈，永遠無法每個角落都走過一次。`;
+            } else if (n === 5) {
+                hint = `\uD83D\uDCA1 <b>5x5 棋盤建議：</b><br><br>每一步都盡量走到「四周出路最少」的格子，這樣比較不會太早卡住。<br><br><b>為什麼？</b><br>想像你在迷宮裡，每次都先走快沒路的地方，這樣比較不會讓其他地方變成死路。<br><br><b>補充：</b><br>5x5 棋盤只能做到「開放巡迴」，也就是最後一步沒辦法回到起點。`;
+            } else if (n === 6) {
+                hint = `\uD83D\uDCA1 <b>6x6 棋盤建議：</b><br><br>同樣建議每一步都走到「出路最少」的格子，這樣比較容易走完全部。<br><br><b>說明：</b><br>這種走法叫「Warnsdorff's rule」，意思是每次都優先走快沒路的地方。<br>6x6 棋盤最後一步也沒辦法回到起點（只能開放巡迴）。`;
+            } else if (n === 7) {
+                hint = `\uD83D\uDCA1 <b>7x7 棋盤建議：</b><br><br>建議還是每一步都走到「出路最少」的格子。<br><br><b>說明：</b><br>這種策略就像先把難走的地方解決，避免後面卡住。7x7 棋盤也只能做到開放巡迴。`;
+            } else if (n >= 8) {
+                hint = `\uD83D\uDCA1 <b>${n}x${n} 棋盤建議：</b><br><br>建議每一步都走到「出路最少」的格子，這樣比較容易完成整個巡迴。<br><br><b>生活化說明：</b><br>就像打掃房間時，會先把最難清的角落處理掉，這樣最後才不會有地方進不去。<br><br><b>補充：</b><br>8x8 以上的棋盤，理論上可以走完一圈回到起點（封閉巡迴），但還是要小心不要太早卡住。`;
+            }
+            hintDiv.innerHTML = hint;
+            hintDiv.style.display = 'block';
+        }
+
         // 初始化棋盤
         initBoard();
         updateCellClickable();
+        window.addEventListener('resize', () => {
+            initBoard();
+            updateCellClickable();
+        });
     </script>
 </body>
 </html>
