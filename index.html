@@ -175,12 +175,20 @@
             currentStep = 0;
             currentPos = null;
             boardDiv.innerHTML = '';
-            // 計算每格大小，讓棋盤寬度不超過螢幕
-            let vw = Math.min(window.innerWidth, window.innerHeight) * 0.96;
-            let cellSize = Math.floor(vw / n);
+            // 讓棋盤完整顯示於螢幕（含間距），自動調整格子大小
+            const wrapperPadding = window.innerWidth < 600 ? 12 : 32; // px
+            const boardPadding = window.innerWidth < 600 ? window.innerWidth * 0.08 : 32; // px
+            const gap = 4; // px
+            const maxBoardWidth = window.innerWidth - wrapperPadding * 2;
+            const maxBoardHeight = window.innerHeight - 120 - wrapperPadding * 2; // 120: controls+message+hint
+            // 計算最大可用寬高
+            const maxSize = Math.min(maxBoardWidth, maxBoardHeight);
+            // n 個格子有 (n-1) 個 gap
+            let cellSize = Math.floor((maxSize - (n - 1) * gap - boardPadding * 2) / n);
             if (cellSize > 60) cellSize = 60;
+            if (cellSize < 24) cellSize = 24;
             document.documentElement.style.setProperty('--cell-size', cellSize + 'px');
-            boardDiv.style.gridTemplateColumns = `repeat(${n}, var(--cell-size, 48px))`;
+            boardDiv.style.gridTemplateColumns = `repeat(${n}, var(--cell-size, 32px))`;
             messageDiv.textContent = '';
             for (let i = 0; i < n; i++) {
                 for (let j = 0; j < n; j++) {
