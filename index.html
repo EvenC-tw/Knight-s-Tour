@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>騎士巡迴問題</title>
+    <title>騎士巡迴 - 手動走訪</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -14,17 +13,14 @@
             background-color: #f0f0f0;
             margin: 20px;
         }
-
         #controls {
             margin-bottom: 20px;
         }
-
         #board {
             display: grid;
             gap: 2px;
             background-color: #000;
         }
-
         .cell {
             width: 50px;
             height: 50px;
@@ -34,51 +30,59 @@
             font-size: 14px;
             color: #000;
             border: 1px solid #000;
+            cursor: default;
         }
-
         .black {
             background-color: #769656;
         }
-
         .white {
             background-color: #eeeed2;
         }
-
         .visited {
             font-weight: bold;
+            background-color: #ffeb3b !important; /* 已訪問格子用黃色高亮 */
         }
-
-        input,
-        button {
+        .valid {
+            background-color: #90caf9 !important; /* 可點擊格子用藍色高亮 */
+            cursor: pointer;
+        }
+        input, button {
             padding: 5px;
             margin: 5px;
         }
-
         button {
             background-color: #4CAF50;
             color: white;
             border: none;
             cursor: pointer;
         }
-
         button:hover {
             background-color: #45a049;
         }
+        #message {
+            margin-top: 10px;
+            font-size: 16px;
+            color: #d32f2f;
+        }
     </style>
 </head>
-
 <body>
     <div id="controls">
         <label for="boardSize">輸入棋盤大小 n (3-10)：</label>
         <input type="number" id="boardSize" value="8" min="3" max="10">
-        <button onclick="generateTour()">生成巡迴</button>
+        <button onclick="startTour()">開始</button>
         <button onclick="resetBoard()">重新開始</button>
     </div>
     <div id="board"></div>
+    <div id="message"></div>
 
     <script>
         const boardDiv = document.getElementById('board');
+        const messageDiv = document.getElementById('message');
         let n = 8;
+        let board = [];
+        let currentStep = 0;
+        let currentPos = null;
 
         // 騎士的合法移動
         const moves = [
@@ -86,81 +90,112 @@
             [1, -2], [1, 2], [2, -1], [2, 1]
         ];
 
-        // 計算某格子的後續可達格子數
-        function getDegree(board, x, y) {
-            let count = 0;
-            for (const [dx, dy] of moves) {
-                const nx = x + dx, ny = y + dy;
-                if (nx >= 0 && nx < n && ny >= 0 && ny < n && board[nx][ny] === -1) {
-                    count++;
-                }
-            }
-            return count;
-        }
-
-        // Warnsdorff 演算法生成巡迴
-        function knightsTour() {
-            const board = Array(n).fill().map(() => Array(n).fill(-1));
-            board[0][0] = 1; // 從 (0,0) 開始
-            let x = 0, y = 0, pos = 1;
-
-            while (pos < n * n) {
-                let minDeg = n * n, nextX = -1, nextY = -1;
-                let candidates = [];
-
-                // 檢查所有可能移動
-                for (const [dx, dy] of moves) {
-                    const nx = x + dx, ny = y + dy;
-                    if (nx >= 0 && nx < n && ny >= 0 && ny < n && board[nx][ny] === -1) {
-                        const deg = getDegree(board, nx, ny);
-                        candidates.push({ x: nx, y: ny, deg });
-                    }
-                }
-
-                // 選擇後續可達格子數最少的格子
-                candidates.sort((a, b) => a.deg - b.deg);
-                if (candidates.length === 0) return null; // 無解
-                ({ x: nextX, y: nextY } = candidates[0]);
-
-                board[nextX][nextY] = pos + 1;
-                x = nextX;
-                y = nextY;
-                pos++;
-            }
-            return board;
-        }
-
-        // 繪製棋盤
-        function drawBoard(board) {
+        // 初始化棋盤
+        function initBoard() {
+            board = Array(n).fill().map(() => Array(n).fill(-1));
+            currentStep = 0;
+            currentPos = null;
             boardDiv.innerHTML = '';
             boardDiv.style.gridTemplateColumns = `repeat(${n}, 50px)`;
+            messageDiv.textContent = '';
             for (let i = 0; i < n; i++) {
                 for (let j = 0; j < n; j++) {
                     const cell = document.createElement('div');
                     cell.className = 'cell';
                     cell.classList.add((i + j) % 2 === 0 ? 'white' : 'black');
-                    if (board && board[i][j] !== -1) {
-                        cell.classList.add('visited');
-                        cell.textContent = board[i][j];
-                    }
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    cell.addEventListener('click', handleCellClick);
                     boardDiv.appendChild(cell);
                 }
             }
         }
 
-        // 生成巡迴
-        function generateTour() {
+        // 檢查是否為合法移動
+        function isValidMove(fromX, fromY, toX, toY) {
+            if (toX < 0 || toX >= n || toY < 0 || toY >= n || board[toX][toY] !== -1) {
+                return false;
+            }
+            for (const [dx, dy] of moves) {
+                if (toX === fromX + dx && toY === fromY + dy) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // 更新可點擊格子
+        function updateValidMoves() {
+            // 清除所有 valid 樣式
+            document.querySelectorAll('.valid').forEach(cell => cell.classList.remove('valid'));
+            if (!currentPos) return; // 尚未選擇起點
+            const [x, y] = currentPos;
+            for (const [dx, dy] of moves) {
+                const nx = x + dx, ny = y + dy;
+                if (nx >= 0 && nx < n && ny >= 0 && ny < n && board[nx][ny] === -1) {
+                    const cell = document.querySelector(`.cell[data-row="${nx}"][data-col="${ny}"]`);
+                    cell.classList.add('valid');
+                }
+            }
+        }
+
+        // 處理格子點擊
+        function handleCellClick(event) {
+            const row = parseInt(event.target.dataset.row);
+            const col = parseInt(event.target.dataset.col);
+            if (currentStep === 0) {
+                // 第一次點擊：設置起點
+                board[row][col] = 1;
+                event.target.textContent = 1;
+                event.target.classList.add('visited');
+                currentStep = 1;
+                currentPos = [row, col];
+                updateValidMoves();
+                messageDiv.textContent = '請選擇下一步';
+            } else {
+                // 後續點擊：檢查是否為合法移動
+                if (isValidMove(currentPos[0], currentPos[1], row, col)) {
+                    currentStep++;
+                    board[row][col] = currentStep;
+                    event.target.textContent = currentStep;
+                    event.target.classList.add('visited');
+                    currentPos = [row, col];
+                    updateValidMoves();
+                    if (currentStep === n * n) {
+                        messageDiv.textContent = '恭喜！完成騎士巡迴！';
+                        document.querySelectorAll('.cell').forEach(cell => cell.style.cursor = 'default');
+                    } else {
+                        messageDiv.textContent = `步數：${currentStep}，請選擇下一步`;
+                    }
+                }
+            }
+            // 檢查是否有合法移動
+            let hasValidMove = false;
+            if (currentPos) {
+                const [x, y] = currentPos;
+                for (const [dx, dy] of moves) {
+                    const nx = x + dx, ny = y + dy;
+                    if (nx >= 0 && nx < n && ny >= 0 && ny < n && board[nx][ny] === -1) {
+                        hasValidMove = true;
+                        break;
+                    }
+                }
+            }
+            if (!hasValidMove && currentStep < n * n) {
+                messageDiv.textContent = '無合法移動，請重新開始！';
+                document.querySelectorAll('.cell').forEach(cell => cell.style.cursor = 'default');
+            }
+        }
+
+        // 開始走訪
+        function startTour() {
             n = parseInt(document.getElementById('boardSize').value);
             if (n < 3 || n > 10) {
                 alert('請輸入 3 到 10 之間的數字！');
                 return;
             }
-            const board = knightsTour();
-            if (!board) {
-                alert('無法生成巡迴，請重試！');
-                return;
-            }
-            drawBoard(board);
+            initBoard();
+            messageDiv.textContent = '請點擊起始格子';
         }
 
         // 重新開始
@@ -170,12 +205,12 @@
                 n = 8;
                 document.getElementById('boardSize').value = 8;
             }
-            drawBoard(null);
+            initBoard();
+            messageDiv.textContent = '請點擊起始格子';
         }
 
         // 初始化棋盤
-        drawBoard(null);
+        initBoard();
     </script>
 </body>
-
 </html>
