@@ -6,63 +6,88 @@
     <title>騎士巡迴 - 手動走訪</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: #f0f0f0;
+            background: #18191a;
             margin: 20px;
+            color: #f5f6fa;
         }
         #controls {
             margin-bottom: 20px;
+            background: #232326;
+            border-radius: 16px;
+            padding: 16px 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         #board {
             display: grid;
-            gap: 2px;
-            background-color: #000;
+            gap: 4px;
+            background: #232326;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.18);
         }
         .cell {
-            width: 50px;
-            height: 50px;
+            width: 48px;
+            height: 48px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
-            color: #000;
-            border: 1px solid #000;
-            cursor: default;
+            font-size: 18px;
+            color: #f5f6fa;
+            background: #232326;
+            border: 1.5px solid #35363a;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+            user-select: none;
         }
-        .black {
-            background-color: #769656;
-        }
-        .white {
-            background-color: #eeeed2;
+        .cell:active {
+            background: #44464a;
         }
         .visited {
             font-weight: bold;
-            background-color: #ffeb3b !important; /* 已訪問格子用黃色高亮 */
-        }
-        .valid {
-            background-color: #90caf9 !important; /* 可點擊格子用藍色高亮 */
-            cursor: pointer;
+            background: #ffd600 !important;
+            color: #232326 !important;
+            box-shadow: 0 0 0 2px #ffd60055;
         }
         input, button {
-            padding: 5px;
-            margin: 5px;
+            padding: 7px 14px;
+            margin: 0 4px;
+            border-radius: 8px;
+            border: none;
+            outline: none;
+            font-size: 16px;
+        }
+        input[type="number"] {
+            background: #232326;
+            color: #f5f6fa;
+            border: 1.5px solid #35363a;
+            width: 60px;
+            text-align: center;
         }
         button {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
+            background: linear-gradient(90deg, #4f8cff 0%, #1e6fff 100%);
+            color: #fff;
+            font-weight: 600;
+            box-shadow: 0 1px 4px rgba(30,111,255,0.08);
             cursor: pointer;
+            transition: background 0.2s, box-shadow 0.2s;
         }
         button:hover {
-            background-color: #45a049;
+            background: linear-gradient(90deg, #1e6fff 0%, #4f8cff 100%);
+            box-shadow: 0 2px 8px rgba(30,111,255,0.16);
         }
         #message {
-            margin-top: 10px;
-            font-size: 16px;
-            color: #d32f2f;
+            margin-top: 18px;
+            font-size: 18px;
+            color: #ffd600;
+            min-height: 24px;
         }
     </style>
 </head>
@@ -96,13 +121,12 @@
             currentStep = 0;
             currentPos = null;
             boardDiv.innerHTML = '';
-            boardDiv.style.gridTemplateColumns = `repeat(${n}, 50px)`;
+            boardDiv.style.gridTemplateColumns = `repeat(${n}, 48px)`;
             messageDiv.textContent = '';
             for (let i = 0; i < n; i++) {
                 for (let j = 0; j < n; j++) {
                     const cell = document.createElement('div');
                     cell.className = 'cell';
-                    cell.classList.add((i + j) % 2 === 0 ? 'white' : 'black');
                     cell.dataset.row = i;
                     cell.dataset.col = j;
                     cell.addEventListener('click', handleCellClick);
@@ -126,17 +150,7 @@
 
         // 更新可點擊格子
         function updateValidMoves() {
-            // 清除所有 valid 樣式
-            document.querySelectorAll('.valid').forEach(cell => cell.classList.remove('valid'));
-            if (!currentPos) return; // 尚未選擇起點
-            const [x, y] = currentPos;
-            for (const [dx, dy] of moves) {
-                const nx = x + dx, ny = y + dy;
-                if (nx >= 0 && nx < n && ny >= 0 && ny < n && board[nx][ny] === -1) {
-                    const cell = document.querySelector(`.cell[data-row="${nx}"][data-col="${ny}"]`);
-                    cell.classList.add('valid');
-                }
-            }
+            // 不再顯示 valid 樣式，也不做任何事
         }
 
         // 處理格子點擊
@@ -150,7 +164,7 @@
                 event.target.classList.add('visited');
                 currentStep = 1;
                 currentPos = [row, col];
-                updateValidMoves();
+                updateCellClickable();
                 messageDiv.textContent = '請選擇下一步';
             } else {
                 // 後續點擊：檢查是否為合法移動
@@ -160,7 +174,7 @@
                     event.target.textContent = currentStep;
                     event.target.classList.add('visited');
                     currentPos = [row, col];
-                    updateValidMoves();
+                    updateCellClickable();
                     if (currentStep === n * n) {
                         messageDiv.textContent = '恭喜！完成騎士巡迴！';
                         document.querySelectorAll('.cell').forEach(cell => cell.style.cursor = 'default');
@@ -187,6 +201,29 @@
             }
         }
 
+        // 只允許合法格子可點擊
+        function updateCellClickable() {
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.style.pointerEvents = 'none';
+            });
+            if (currentStep === 0) {
+                // 起始狀態，全部可點
+                document.querySelectorAll('.cell').forEach(cell => {
+                    cell.style.pointerEvents = 'auto';
+                });
+                return;
+            }
+            if (!currentPos) return;
+            const [x, y] = currentPos;
+            for (const [dx, dy] of moves) {
+                const nx = x + dx, ny = y + dy;
+                if (nx >= 0 && nx < n && ny >= 0 && ny < n && board[nx][ny] === -1) {
+                    const cell = document.querySelector(`.cell[data-row="${nx}"][data-col="${ny}"]`);
+                    cell.style.pointerEvents = 'auto';
+                }
+            }
+        }
+
         // 開始走訪
         function startTour() {
             n = parseInt(document.getElementById('boardSize').value);
@@ -196,6 +233,7 @@
             }
             initBoard();
             messageDiv.textContent = '請點擊起始格子';
+            updateCellClickable();
         }
 
         // 重新開始
@@ -207,10 +245,12 @@
             }
             initBoard();
             messageDiv.textContent = '請點擊起始格子';
+            updateCellClickable();
         }
 
         // 初始化棋盤
         initBoard();
+        updateCellClickable();
     </script>
 </body>
 </html>
