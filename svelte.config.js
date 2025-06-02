@@ -21,6 +21,7 @@ const config = {
       base: '',
       assets: '',
     },
+    appDir: 'app',
   },
 };
 
