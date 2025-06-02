@@ -19,6 +19,7 @@ const config = {
     }),
     paths: {
       base: '',
+      assets: '',
     },
   },
 };
