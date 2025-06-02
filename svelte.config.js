@@ -18,7 +18,7 @@ const config = {
       precompress: false,
     }),
     paths: {
-      base: '/Knight-s-Tour',
+      base: '',
     },
   },
 };
