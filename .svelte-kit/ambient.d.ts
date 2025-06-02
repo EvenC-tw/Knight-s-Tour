@@ -68,7 +68,6 @@ declare module '$env/static/private' {
 	export const __CF_USER_TEXT_ENCODING: string;
 	export const npm_package_devDependencies_eslint: string;
 	export const npm_execpath: string;
-	export const PAGER: string;
 	export const npm_package_devDependencies_svelte: string;
 	export const npm_config_frozen_lockfile: string;
 	export const PATH: string;
@@ -76,7 +75,6 @@ declare module '$env/static/private' {
 	export const USER_ZDOTDIR: string;
 	export const PWD: string;
 	export const npm_command: string;
-	export const DISABLE_AUTO_UPDATE: string;
 	export const npm_package_scripts_preview: string;
 	export const npm_lifecycle_event: string;
 	export const LANG: string;
@@ -189,7 +187,6 @@ declare module '$env/dynamic/private' {
 		__CF_USER_TEXT_ENCODING: string;
 		npm_package_devDependencies_eslint: string;
 		npm_execpath: string;
-		PAGER: string;
 		npm_package_devDependencies_svelte: string;
 		npm_config_frozen_lockfile: string;
 		PATH: string;
@@ -197,7 +194,6 @@ declare module '$env/dynamic/private' {
 		USER_ZDOTDIR: string;
 		PWD: string;
 		npm_command: string;
-		DISABLE_AUTO_UPDATE: string;
 		npm_package_scripts_preview: string;
 		npm_lifecycle_event: string;
 		LANG: string;
